@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>List Your AI Business — AIScope</title>
+  <meta name="description" content="Create a free listing on AIScope and get discovered by businesses looking for AI solutions.">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="auth-wrapper" style="align-items:flex-start;padding-top:var(--space-8)">
+  <div style="width:100%;max-width:500px;margin:0 auto">
+
+    <div class="auth-card">
+      <a href="../index.html" class="auth-card__logo">AI<span>Scope</span></a>
+
+      <h1 class="auth-card__title">List your AI business</h1>
+      <p class="auth-card__sub">Free to get started. Get discovered by businesses searching for AI solutions.</p>
+
+      <div class="form-error" id="form-error"></div>
+
+      <!-- Step 1: Account -->
+      <div id="step-account">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:var(--space-5)">Step 1 of 2 — Your Account</div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="full-name">Full Name <span>*</span></label>
+            <input type="text" class="form-input" id="full-name" placeholder="Jane Smith" autocomplete="name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="company-name">Company Name <span>*</span></label>
+            <input type="text" class="form-input" id="company-name" placeholder="Acme AI" autocomplete="organization" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Work Email <span>*</span></label>
+          <input type="email" class="form-input" id="email" placeholder="jane@acme.ai" autocomplete="email" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password <span>*</span></label>
+          <input type="password" class="form-input" id="password" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8">
+          <div class="form-hint">Minimum 8 characters.</div>
+        </div>
+
+        <button class="btn btn--primary btn--full" id="register-btn" onclick="handleRegister()">
+          Create Account →
+        </button>
+
+        <div class="auth-card__footer">
+          Already have an account? <a href="..../auth/login.html">Sign in →</a>
+        </div>
+
+        <p style="font-size:11px;color:var(--text-3);text-align:center;margin-top:var(--space-5);line-height:1.6">
+          By creating an account you agree to our <a href="../terms.html" style="color:var(--text-2)">Terms of Service</a> and <a href="../privacy.html" style="color:var(--text-2)">Privacy Policy</a>.
+        </p>
+      </div>
+
+      <!-- Step 2: Email confirmation notice -->
+      <div id="step-confirm" style="display:none;text-align:center;padding:var(--space-4) 0">
+        <div style="font-size:2.5rem;margin-bottom:var(--space-4)">📬</div>
+        <h2 style="font-size:1.3rem;margin-bottom:var(--space-3)">Check your inbox</h2>
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:var(--space-5)">
+          We sent a confirmation link to <strong id="confirm-email"></strong>.
+          Click it to activate your account, then come back to build your listing.
+        </p>
+        <a href="..../auth/login.html" class="btn btn--primary btn--full">Go to Sign In →</a>
+        <div style="margin-top:var(--space-4);font-size:12px;color:var(--text-3)">
+          Didn't get it? Check your spam folder.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Trust signals -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-5);margin-top:var(--space-5)">
+      <span style="font-size:12px;color:var(--text-3)">✓ Free forever</span>
+      <span style="font-size:12px;color:var(--text-3)">✓ No credit card</span>
+      <span style="font-size:12px;color:var(--text-3)">✓ Cancel anytime</span>
+    </div>
+
+  </div>
+</div>
+
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/app.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script>
+
+redirectIfAuthed('/dashboard/');
+
+async function handleRegister() {
+  const fullName    = document.getElementById('full-name').value.trim();
+  const companyName = document.getElementById('company-name').value.trim();
+  const email       = document.getElementById('email').value.trim();
+  const password    = document.getElementById('password').value;
+  const btn         = document.getElementById('register-btn');
+  const errEl       = document.getElementById('form-error');
+
+  errEl.style.display = 'none';
+
+  // Validate
+  if (!fullName || !companyName || !email || !password) {
+    errEl.textContent = 'Please fill in all required fields.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (password.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Please enter a valid email address.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Creating account…';
+
+  try {
+    await register(email, password, fullName, companyName);
+    document.getElementById('confirm-email').textContent = email;
+    document.getElementById('step-account').style.display = 'none';
+    document.getElementById('step-confirm').style.display = 'block';
+  } catch (err) {
+    let msg = err.message;
+    if (msg.includes('already registered') || msg.includes('already been registered')) {
+      msg = 'An account with this email already exists. <a href="..../auth/login.html" style="color:var(--accent)">Sign in instead →</a>';
+    }
+    errEl.innerHTML = msg;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Create Account →';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleRegister();
+});
+</script>
+</body>
+</html>

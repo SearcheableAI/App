@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search AI Solutions — AIScope</title>
+  <meta name="description" content="Search and filter AI agencies, SaaS tools, and consultants. Find the right AI solution for your business.">
+  <link rel="stylesheet" href="assets/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container">
+    <div class="nav__inner">
+      <a href="index.html" class="nav__logo">AI<span>Scope</span></a>
+      <div class="nav__links">
+        <a href="search.html" class="nav__link nav__link--active">Browse</a>
+        <a href="search.html?category=lead-generation" class="nav__link">Lead Gen</a>
+        <a href="search.html?category=voice-agents" class="nav__link">Voice Agents</a>
+        <a href="search.html?category=customer-support" class="nav__link">Customer Support</a>
+      </div>
+      <div class="nav__actions" id="nav-actions"></div>
+    </div>
+  </div>
+</nav>
+
+<!-- SEARCH BAR -->
+<div style="background:var(--surface);border-bottom:1px solid var(--border);padding:var(--space-4) 0;">
+  <div class="container">
+    <div class="search-bar" style="max-width:680px">
+      <span class="search-bar__icon">⌕</span>
+      <input
+        type="text"
+        class="search-bar__input"
+        id="search-input"
+        placeholder="Search AI solutions, agencies, tools…"
+        autocomplete="off"
+      >
+      <button class="search-bar__btn" onclick="doSearch()">Search</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVE FILTERS STRIP -->
+<div id="active-filters-strip" style="display:none;background:var(--bg);border-bottom:1px solid var(--border);padding:var(--space-3) 0;">
+  <div class="container">
+    <div id="active-filters-inner" style="display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)">
+      <span style="font-size:12px;color:var(--text-3)">Filtering by:</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="container">
+  <div class="search-layout">
+
+    <!-- FILTERS SIDEBAR -->
+    <aside class="filters-panel">
+      <div class="filters-panel__title">Filters</div>
+
+      <!-- Solution Category -->
+      <div class="filter-group">
+        <div class="filter-group__title">Solution</div>
+        <div id="category-filters">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Provider Type -->
+      <div class="filter-group" style="border-top:1px solid var(--border);padding-top:var(--space-4)">
+        <div class="filter-group__title">Provider Type</div>
+        <label class="filter-option">
+          <input type="radio" name="type" value="" onchange="applyFilters()"> <span class="filter-option__label">All Types</span>
+        </label>
+        <label class="filter-option">
+          <input type="radio" name="type" value="agency" onchange="applyFilters()"> <span class="filter-option__label">AI Agency</span>
+        </label>
+        <label class="filter-option">
+          <input type="radio" name="type" value="saas" onchange="applyFilters()"> <span class="filter-option__label">AI SaaS</span>
+        </label>
+        <label class="filter-option">
+          <input type="radio" name="type" value="consulting" onchange="applyFilters()"> <span class="filter-option__label">Consulting</span>
+        </label>
+      </div>
+
+      <!-- Team Size -->
+      <div class="filter-group" style="border-top:1px solid var(--border);padding-top:var(--space-4)">
+        <div class="filter-group__title">Team Size</div>
+        <label class="filter-option">
+          <input type="checkbox" name="size" value="1" onchange="applyFilters()"> <span class="filter-option__label">Solo</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="size" value="2-10" onchange="applyFilters()"> <span class="filter-option__label">2–10</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="size" value="11-50" onchange="applyFilters()"> <span class="filter-option__label">11–50</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="size" value="51-200" onchange="applyFilters()"> <span class="filter-option__label">51–200</span>
+        </label>
+      </div>
+
+      <!-- Verified only -->
+      <div class="filter-group" style="border-top:1px solid var(--border);padding-top:var(--space-4)">
+        <div class="filter-group__title">Trust</div>
+        <label class="filter-option">
+          <input type="checkbox" id="filter-verified" onchange="applyFilters()">
+          <span class="filter-option__label">Verified only</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" id="filter-claimed" onchange="applyFilters()">
+          <span class="filter-option__label">Claimed profiles</span>
+        </label>
+      </div>
+
+      <button onclick="clearFilters()" class="btn btn--outline btn--sm btn--full" style="margin-top:var(--space-4)">
+        Clear All Filters
+      </button>
+    </aside>
+
+    <!-- RESULTS -->
+    <main>
+      <div class="results-header">
+        <div class="results-count" id="results-count">
+          <strong>—</strong> results
+        </div>
+        <select class="sort-select" id="sort-select" onchange="applyFilters()">
+          <option value="relevance">Most Relevant</option>
+          <option value="newest">Newest First</option>
+          <option value="completeness">Most Complete</option>
+          <option value="sponsored">Sponsored First</option>
+        </select>
+      </div>
+
+      <div class="grid grid--auto" id="results-grid">
+        <!-- rendered by JS -->
+      </div>
+
+      <div id="load-more-wrap" style="text-align:center;margin-top:var(--space-7);display:none">
+        <button class="btn btn--outline" id="load-more-btn" onclick="loadMore()">
+          Load More
+        </button>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer" style="margin-top:var(--space-8)">
+  <div class="container">
+    <div class="footer__bottom">
+      <a href="index.html" style="font-family:var(--font-display);font-weight:800;letter-spacing:-0.03em;font-size:1.1rem">
+        AI<span style="color:var(--accent)">Scope</span>
+      </a>
+      <span style="color:var(--text-3);font-size:12px">© 2025 AIScope</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/auth.js"></script>
+<script>
+
+// ── State ─────────────────────────────────────────────────────
+const PAGE_SIZE = 12;
+let offset = 0;
+let allLoaded = false;
+let activeCategory = '';
+let activeType = '';
+let activeSizes = [];
+let activeSort = 'relevance';
+let searchQuery = '';
+let servicesMap = {}; // slug → id
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  await loadServices();
+
+  const params = new URLSearchParams(window.location.search);
+  searchQuery = params.get('q') || '';
+  activeCategory = params.get('category') || '';
+  activeSort = params.get('sort') || 'relevance';
+
+  if (searchQuery) document.getElementById('search-input').value = searchQuery;
+  if (activeSort) document.getElementById('sort-select').value = activeSort;
+
+  // Pre-check category filter
+  if (activeCategory) {
+    const cb = document.querySelector(`input[data-slug="${activeCategory}"]`);
+    if (cb) cb.checked = true;
+  }
+
+  renderActiveFilters();
+  await fetchResults(true);
+}
+
+// ── Load services for sidebar ─────────────────────────────────
+async function loadServices() {
+  const { data } = await db.from('services').select('*').eq('is_active', true).order('sort_order');
+  const el = document.getElementById('category-filters');
+  if (!data) return;
+
+  data.forEach(s => { servicesMap[s.slug] = s.id; });
+
+  el.innerHTML = data.map(s => `
+    <label class="filter-option">
+      <input type="checkbox" name="category" value="${esc(s.id)}" data-slug="${esc(s.slug)}" onchange="applyFilters()">
+      <span class="filter-option__label">${s.icon || ''} ${esc(s.name)}</span>
+    </label>
+  `).join('');
+}
+
+// ── Fetch results ─────────────────────────────────────────────
+async function fetchResults(reset = false) {
+  if (reset) { offset = 0; allLoaded = false; }
+
+  const grid = document.getElementById('results-grid');
+  if (reset) grid.innerHTML = renderSkeletonCards(PAGE_SIZE);
+
+  // Build query
+  let query = db
+    .from('listings')
+    .select(`
+      id, name, slug, tagline, logo_url, listing_type,
+      listing_tier, is_verified, is_claimed, hq_city, hq_country,
+      profile_completeness, created_at,
+      listing_services ( service_id, services ( name, slug ) )
+    `)
+    .eq('status', 'published')
+    .range(offset, offset + PAGE_SIZE - 1);
+
+  // Full-text search
+  if (searchQuery) {
+    query = query.textSearch('search_vector', searchQuery, { type: 'websearch' });
+  }
+
+  // Category filter — filter by service IDs
+  const checkedCategories = [...document.querySelectorAll('input[name="category"]:checked')].map(i => i.value);
+  if (checkedCategories.length) {
+    // Filter listings that have any of the selected services
+    const ids = checkedCategories.join(',');
+    query = query.in('listing_services.service_id', checkedCategories);
+  }
+
+  // Type filter
+  const typeEl = document.querySelector('input[name="type"]:checked');
+  const typeVal = typeEl ? typeEl.value : '';
+  if (typeVal) query = query.eq('listing_type', typeVal);
+
+  // Team size
+  const sizes = [...document.querySelectorAll('input[name="size"]:checked')].map(i => i.value);
+  if (sizes.length) query = query.in('team_size', sizes);
+
+  // Trust
+  if (document.getElementById('filter-verified')?.checked) query = query.eq('is_verified', true);
+  if (document.getElementById('filter-claimed')?.checked) query = query.eq('is_claimed', true);
+
+  // Sort
+  const sort = document.getElementById('sort-select').value;
+  switch (sort) {
+    case 'newest':
+      query = query.order('created_at', { ascending: false }); break;
+    case 'completeness':
+      query = query.order('profile_completeness', { ascending: false }); break;
+    case 'sponsored':
+      query = query.order('listing_tier', { ascending: false })
+                   .order('profile_completeness', { ascending: false }); break;
+    default: // relevance: sponsored → completeness
+      query = query.order('listing_tier', { ascending: false })
+                   .order('profile_completeness', { ascending: false });
+  }
+
+  const { data, error } = await query;
+
+  if (reset) grid.innerHTML = '';
+
+  if (error) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-state__icon">⚠️</div>
+      <div class="empty-state__title">Something went wrong</div>
+      <p class="empty-state__sub">${esc(error.message)}</p>
+    </div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    if (reset) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-state__icon">🔍</div>
+        <div class="empty-state__title">No results found</div>
+        <p class="empty-state__sub">Try different keywords or remove some filters.</p>
+        <button onclick="clearFilters()" class="btn btn--outline">Clear Filters</button>
+      </div>`;
+    }
+    document.getElementById('load-more-wrap').style.display = 'none';
+    allLoaded = true;
+    updateCount(0);
+    return;
+  }
+
+  grid.insertAdjacentHTML('beforeend', data.map(renderListingCard).join(''));
+  updateCount(reset ? data.length : undefined);
+  offset += data.length;
+  allLoaded = data.length < PAGE_SIZE;
+  document.getElementById('load-more-wrap').style.display = allLoaded ? 'none' : 'block';
+}
+
+// ── Load more ─────────────────────────────────────────────────
+async function loadMore() {
+  const btn = document.getElementById('load-more-btn');
+  btn.textContent = 'Loading…';
+  btn.disabled = true;
+  await fetchResults(false);
+  btn.textContent = 'Load More';
+  btn.disabled = false;
+}
+
+// ── Count display ─────────────────────────────────────────────
+function updateCount(n) {
+  const el = document.getElementById('results-count');
+  if (n !== undefined) {
+    el.innerHTML = `<strong>${n}</strong> result${n !== 1 ? 's' : ''}`;
+  }
+}
+
+// ── Search ────────────────────────────────────────────────────
+function doSearch() {
+  searchQuery = document.getElementById('search-input').value.trim();
+  updateUrl();
+  renderActiveFilters();
+  fetchResults(true);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('search-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+});
+
+// ── Filters ───────────────────────────────────────────────────
+function applyFilters() {
+  updateUrl();
+  renderActiveFilters();
+  fetchResults(true);
+}
+
+function clearFilters() {
+  document.querySelectorAll('input[name="category"]').forEach(i => i.checked = false);
+  document.querySelectorAll('input[name="type"]').forEach(i => i.checked = false);
+  document.querySelectorAll('input[name="size"]').forEach(i => i.checked = false);
+  if (document.getElementById('filter-verified')) document.getElementById('filter-verified').checked = false;
+  if (document.getElementById('filter-claimed')) document.getElementById('filter-claimed').checked = false;
+  document.getElementById('sort-select').value = 'relevance';
+  searchQuery = '';
+  document.getElementById('search-input').value = '';
+  updateUrl();
+  renderActiveFilters();
+  fetchResults(true);
+}
+
+// ── Active filter chips ───────────────────────────────────────
+function renderActiveFilters() {
+  const strip = document.getElementById('active-filters-strip');
+  const inner = document.getElementById('active-filters-inner');
+  const chips = [];
+
+  if (searchQuery) chips.push(`<span class="service-tag service-tag--active">🔍 "${esc(searchQuery)}" <button onclick="clearSearch()" style="margin-left:4px;background:none;border:none;cursor:pointer;color:inherit">✕</button></span>`);
+
+  document.querySelectorAll('input[name="category"]:checked').forEach(i => {
+    const label = i.parentElement.querySelector('.filter-option__label').textContent.trim();
+    chips.push(`<span class="service-tag service-tag--active">${esc(label)}</span>`);
+  });
+
+  strip.style.display = chips.length ? 'block' : 'none';
+  inner.innerHTML = chips.length
+    ? `<span style="font-size:12px;color:var(--text-3)">Active filters:</span>${chips.join('')}<button onclick="clearFilters()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-3);text-decoration:underline">Clear all</button>`
+    : '';
+}
+
+function clearSearch() {
+  searchQuery = '';
+  document.getElementById('search-input').value = '';
+  updateUrl();
+  renderActiveFilters();
+  fetchResults(true);
+}
+
+// ── URL sync ──────────────────────────────────────────────────
+function updateUrl() {
+  const params = new URLSearchParams();
+  if (searchQuery) params.set('q', searchQuery);
+  const cat = document.querySelector('input[name="category"]:checked');
+  if (cat) params.set('category', cat.dataset.slug || '');
+  const sort = document.getElementById('sort-select').value;
+  if (sort && sort !== 'relevance') params.set('sort', sort);
+  const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+  window.history.replaceState(null, '', newUrl);
+}
+
+// ── Boot ──────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
