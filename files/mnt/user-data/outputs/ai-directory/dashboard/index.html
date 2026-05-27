@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — AIScope</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container">
+    <div class="nav__inner">
+      <a href="/" class="nav__logo">AI<span>Scope</span></a>
+      <div class="nav__actions" id="nav-actions"></div>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar__section">
+      <div class="sidebar__label">Listing</div>
+      <a href="/dashboard/" class="sidebar__link sidebar__link--active">
+        <span class="sidebar__icon">◉</span> Overview
+      </a>
+      <a href="/dashboard/edit.html" class="sidebar__link">
+        <span class="sidebar__icon">✎</span> Edit Listing
+      </a>
+      <a href="/dashboard/portfolio.html" class="sidebar__link">
+        <span class="sidebar__icon">⊞</span> Portfolio
+      </a>
+    </div>
+    <div class="sidebar__section">
+      <div class="sidebar__label">Account</div>
+      <a href="/dashboard/settings.html" class="sidebar__link">
+        <span class="sidebar__icon">⚙</span> Settings
+      </a>
+      <button onclick="logout()" class="sidebar__link" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;color:var(--text-2)">
+        <span class="sidebar__icon">→</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="dashboard__content">
+    <div class="dashboard__header">
+      <h1 class="dashboard__title" id="greeting">Dashboard</h1>
+      <p class="dashboard__sub">Manage your listing and track your visibility.</p>
+    </div>
+
+    <!-- NO LISTING STATE -->
+    <div id="no-listing" style="display:none">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--space-8);text-align:center">
+        <div style="font-size:2.5rem;margin-bottom:var(--space-4)">🚀</div>
+        <h2 style="font-size:1.3rem;margin-bottom:var(--space-3)">Create your listing</h2>
+        <p style="font-size:14px;color:var(--text-2);max-width:400px;margin:0 auto var(--space-6)">
+          You don't have a listing yet. Create one to get discovered by businesses searching for AI solutions.
+        </p>
+        <a href="/dashboard/edit.html?new=true" class="btn btn--primary btn--lg">Create My Listing →</a>
+      </div>
+    </div>
+
+    <!-- LISTING EXISTS -->
+    <div id="listing-view" style="display:none">
+
+      <!-- Profile completeness -->
+      <div class="completeness" id="completeness-card"></div>
+
+      <!-- Stats -->
+      <div class="stat-grid" style="margin-bottom:var(--space-6)" id="stat-grid">
+        <div class="stat-card">
+          <div class="stat-card__label">Profile Views</div>
+          <div class="stat-card__value" id="stat-views">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Profile Score</div>
+          <div class="stat-card__value" id="stat-score" style="color:var(--accent)">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Status</div>
+          <div class="stat-card__value" id="stat-status" style="font-size:1rem"></div>
+        </div>
+      </div>
+
+      <!-- Listing preview card -->
+      <div style="margin-bottom:var(--space-5)">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:var(--space-3)">Your Listing Preview</div>
+        <div id="listing-preview"></div>
+      </div>
+
+      <!-- Quick actions -->
+      <div style="display:flex;gap:var(--space-3);flex-wrap:wrap">
+        <a href="/dashboard/edit.html" class="btn btn--primary">Edit Listing</a>
+        <a href="/dashboard/portfolio.html" class="btn btn--outline">Manage Portfolio</a>
+        <a href="#" id="view-public-link" target="_blank" class="btn btn--outline">View Public Profile →</a>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/app.js"></script>
+<script src="/assets/js/auth.js"></script>
+<script>
+
+async function initDashboard() {
+  const session = await requireAuth();
+  if (!session) return;
+
+  // Greeting
+  const profile = await loadProfile(session.user.id);
+  if (profile) {
+    const name = profile.full_name?.split(' ')[0] || 'there';
+    document.getElementById('greeting').textContent = `Welcome back, ${esc(name)}`;
+  }
+
+  // Load listing for this user
+  const { data: listings, error } = await db
+    .from('listings')
+    .select(`*, listing_services(service_id, services(name, slug))`)
+    .eq('owner_id', session.user.id)
+    .limit(1);
+
+  if (error || !listings || listings.length === 0) {
+    document.getElementById('no-listing').style.display = 'block';
+    return;
+  }
+
+  const listing = listings[0];
+  document.getElementById('listing-view').style.display = 'block';
+
+  // Stats
+  document.getElementById('stat-views').textContent = listing.view_count || 0;
+  document.getElementById('stat-score').textContent = `${listing.profile_completeness || 0}%`;
+
+  const statusMap = {
+    published: { label: 'Live ✓', color: 'var(--green)' },
+    draft: { label: 'Draft', color: 'var(--text-3)' },
+    pending_review: { label: 'In Review', color: 'var(--amber)' },
+    suspended: { label: 'Suspended', color: 'var(--red)' },
+  };
+  const statusInfo = statusMap[listing.status] || { label: listing.status, color: 'var(--text-3)' };
+  document.getElementById('stat-status').innerHTML = `<span style="color:${statusInfo.color}">${statusInfo.label}</span>`;
+
+  // Public link
+  document.getElementById('view-public-link').href = `/listing.html?slug=${esc(listing.slug)}`;
+
+  // Preview card
+  document.getElementById('listing-preview').innerHTML = renderListingCard(listing);
+
+  // Completeness
+  renderCompleteness(listing);
+}
+
+function renderCompleteness(listing) {
+  const score = listing.profile_completeness || 0;
+
+  const items = [
+    { label: 'Logo uploaded', done: !!listing.logo_url, points: 15 },
+    { label: 'Description added', done: !!(listing.description && listing.description.length > 100), points: 20 },
+    { label: 'Website URL added', done: !!listing.website_url, points: 10 },
+    { label: 'Tagline written', done: !!listing.tagline, points: 10 },
+    { label: 'Contact email added', done: !!listing.contact_email, points: 10 },
+    { label: 'Services selected', done: !!(listing.listing_services && listing.listing_services.length > 0), points: 10 },
+    { label: 'Pricing model set', done: !!listing.pricing_model, points: 10 },
+    { label: 'LinkedIn URL added', done: !!listing.linkedin_url, points: 5 },
+    { label: 'Location added', done: !!listing.hq_country, points: 5 },
+    { label: 'Founded year added', done: !!listing.founded_year, points: 5 },
+  ];
+
+  const incomplete = items.filter(i => !i.done);
+
+  document.getElementById('completeness-card').innerHTML = `
+    <div class="completeness__header">
+      <span class="completeness__title">Profile Completeness</span>
+      <span class="completeness__score">${score}%</span>
+    </div>
+    ${renderCompletenessBar(score)}
+    ${score < 100 ? `
+      <div style="font-size:13px;color:var(--text-2);margin-bottom:var(--space-3)">
+        Complete your profile to rank higher in search results.
+        ${incomplete.length} item${incomplete.length !== 1 ? 's' : ''} remaining.
+      </div>
+      <div class="completeness__items">
+        ${items.slice(0, 6).map(item => `
+          <div class="completeness__item ${item.done ? 'completeness__item--done' : ''}">
+            ${esc(item.label)}
+            ${!item.done ? `<a href="/dashboard/edit.html" style="margin-left:auto;font-size:12px;color:var(--accent);font-weight:600">+${item.points}pts →</a>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    ` : `
+      <div style="font-size:13px;color:var(--accent);font-weight:600;text-align:center;padding:var(--space-2)">
+        ✓ Profile complete! You're getting maximum visibility.
+      </div>
+    `}
+  `;
+}
+
+initDashboard();
+</script>
+</body>
+</html>
